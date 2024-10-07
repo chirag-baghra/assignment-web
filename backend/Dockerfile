@@ -1,40 +1,21 @@
+# Use the official Python image from the Docker Hub
+FROM python:3.12-slim
 
-FROM python:3.11-slim
-
-# Set environment variables
-ENV ACCEPT_EULA=Y
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install necessary packages
-RUN apt-get update && \
-    apt-get install -y \
-    curl \
-    gnupg2 \
-    apt-transport-https \
-    unixodbc \
-    unixodbc-dev \
-    perl \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
-# Add Microsoft package repository for ODBC Driver
-RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
-    curl https://packages.microsoft.com/config/debian/10/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
-    apt-get update && \
-    apt-get install -y msodbcsql17 && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
+# Set the working directory
 WORKDIR /app
 
-COPY requirements.txt .
-
+# Copy the requirements file and install dependencies
+COPY requirements.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy the entire backend folder into the container
 COPY . .
 
+# Expose the port your app runs on
 EXPOSE 5000
 
+# Set the environment variable for Flask
 ENV FLASK_APP=app.py
 
-CMD ["flask", "run", "--host=0.0.0.0", "--port=5000"]
+# Run the application
+CMD ["flask", "run", "--host=0.0.0.0"]

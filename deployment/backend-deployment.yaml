@@ -1,19 +1,33 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: flask-sql-deployment
+  name: backend
+  labels:
+    app: backend
 spec:
-  replicas: 3
+  replicas: 2  # Number of desired pods
   selector:
     matchLabels:
-      app: flask-app
+      app: backend
   template:
     metadata:
       labels:
-        app: flask-app
+        app: backend
     spec:
       containers:
-      - name: flask-sql-container
-        image: chiragbaghra/flask-backend:latest
+      - name: backend
+        image: gcr.io/class-activity-435807/backend:latest  # Replace with your image
         ports:
-        - containerPort: 5000
+        - containerPort: 5000  # Change to your backend's port
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  type: ClusterIP
+  selector:
+    app: backend
+  ports:
+    - port: 5000  # Change to your backend's port
+      targetPort: 5000

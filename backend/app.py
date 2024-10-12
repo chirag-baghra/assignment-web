@@ -1,77 +1,120 @@
 import os
+import logging
 from flask import Flask, render_template, request, jsonify
+from flask_cors import CORS  # Import CORS to fix CORS issues
 from google.cloud import storage
 import pyodbc
 from google.oauth2 import service_account
 
-# Set the full path to your 'frontend' folder
-template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '../frontend'))
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
-app = Flask(__name__, template_folder=template_dir, static_folder=os.path.join(template_dir, 'static'))
+# Set template and static folder paths
+template_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'templates'))
+static_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'static'))
+app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 
-print(f"Template directory: {template_dir}")
+# Enable CORS for specific origin
+CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
+
+# GCS authentication using service account file
+SERVICE_ACCOUNT_FILE = os.path.join(os.path.dirname(__file__), 'class-activity-435807-1abd91357b8d.json')
+credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE)
+BUCKET_NAME = "my-flask"  # Ensure this is the correct GCS bucket name
 
 # Establish a connection to the database
 def get_db_connection():
     try:
         conn = pyodbc.connect(
             'DRIVER={ODBC Driver 17 for SQL Server};'
-            'SERVER=34.139.95.137;'
-            'DATABASE=myappdb;'
-            'UID=sqlserver;'
-            'PWD=root;'
-            'Encrypt=no;'
+            'SERVER=35.229.112.4;'  # Ensure this is the correct server IP
+            'DATABASE=myappdb;'  # Replace with your actual database name
+            'UID=sqlserver;'  # Username
+            'PWD=root;'  # Password
+            'Encrypt=no;'  # Adjust if encryption is needed
         )
+        logging.info("Database connection established.")
         return conn
     except pyodbc.Error as e:
-        print(f"Connection Error: {e}")
+        logging.error(f"Database Connection Error: {e}")
         return None
 
-# Basic route to show the homepage
+# Homepage route
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# Route to handle form submission
+# Route to handle the submission of two values
 @app.route('/submit', methods=['POST'])
-def submit():
+def submit_values():
+    data = request.get_json()
+    value1 = data.get('value1')
+    value2 = data.get('value2')
+
+    logging.info(f"Received Value 1: {value1}, Value 2: {value2}")
+
+    # Validate input values
+    if not value1 or not value2:
+        return jsonify(error="Both values are required"), 400
+
+    # Combine values into one message to be inserted into the 'message' column
+    combined_message = f"Value 1: {value1}, Value 2: {value2}"
+
+    # Insert values into the database
+    conn = get_db_connection()
+    if conn:
+        cur = conn.cursor()
+        try:
+            cur.execute('INSERT INTO my_table (message) VALUES (?)', (combined_message,))
+            conn.commit()
+            logging.info("Values submitted successfully.")
+            return jsonify(success=True, message="Values submitted successfully"), 201
+        except Exception as e:
+            conn.rollback()
+            logging.error(f"Error occurred while submitting values: {e}")
+            return jsonify(error="Failed to submit values"), 500
+        finally:
+            cur.close()
+            conn.close()
+    else:
+        return jsonify(error="Database connection failed"), 500
+
+# Initialize Google Cloud Storage client
+def get_gcs_client():
+    return storage.Client(credentials=credentials)
+
+# Function to upload a file to Google Cloud Storage
+def upload_to_gcs(file, bucket_name, blob_name):
+    """Uploads the file to Google Cloud Storage."""
     try:
-        data = request.get_json()  # Use get_json to get the incoming JSON data
-        value1 = data.get('value1')
-        value2 = data.get('value2')
-
-        if not value1 or not value2:
-            return jsonify(error="Both values are required"), 400
-
-        print(f"Received values: Value 1 - {value1}, Value 2 - {value2}")
-
-        # Create a message from the received values
-        message = f"Value 1: {value1}, Value 2: {value2}"
-
-        # Save the message to the database
-        conn = get_db_connection()
-        if conn:
-            cur = conn.cursor()
-            try:
-                # Insert the combined message into the database
-                cur.execute('INSERT INTO my_table (message) VALUES (?)', (message,))
-                conn.commit()
-                return jsonify(success=True, message="Values submitted successfully"), 201
-            except Exception as e:
-                conn.rollback()
-                print(f"Error occurred while inserting values: {e}")
-                return jsonify(error="Failed to insert values"), 500
-            finally:
-                cur.close()
-                conn.close()
-        else:
-            return jsonify(error="Database connection failed"), 500
-
+        client = get_gcs_client()
+        bucket = client.bucket(bucket_name)
+        blob = bucket.blob(blob_name)
+        blob.upload_from_file(file)
+        logging.info(f"File {blob_name} uploaded to {bucket_name}.")
+        return f"File {blob_name} uploaded to {bucket_name}"
     except Exception as e:
-        print(f"Error processing submission: {e}")
-        return jsonify(error="An error occurred while processing your request"), 500
+        logging.error(f"Error uploading file to GCS: {e}")
+        raise
 
-# Other routes remain unchanged...
+# Route to handle file uploads
+@app.route('/upload_file', methods=['POST'])
+def upload_file():
+    if 'file' not in request.files:
+        return jsonify(error="No file part"), 400
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify(error="No selected file"), 400
+
+    if file:
+        try:
+            blob_name = file.filename
+            upload_to_gcs(file, BUCKET_NAME, blob_name)
+            return jsonify(success=True, message=f"File '{blob_name}' uploaded successfully"), 201
+        except Exception as e:
+            return jsonify(error=f"Failed to upload file: {str(e)}"), 500
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)

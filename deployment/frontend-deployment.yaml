@@ -1,9 +1,11 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frontend-deployment
+  name: frontend
+  labels:
+    app: frontend
 spec:
-  replicas: 2
+  replicas: 2  # Number of desired pods
   selector:
     matchLabels:
       app: frontend
@@ -14,19 +16,18 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: gcr.io/class-activity-435807/frontend-image:latest  # Use the GCR image
+        image: gcr.io/class-activity-435807/frontend:v2  # Replace with your image
         ports:
-        - containerPort: 80
+        - containerPort: 3000  # Change to your frontend's port
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: frontend-service
+  name: frontend
 spec:
   type: LoadBalancer
   selector:
     app: frontend
   ports:
-  - protocol: TCP
-    port: 80
-    targetPort: 80
+    - port: 80
+      targetPort: 3000  # Change to your frontend's port

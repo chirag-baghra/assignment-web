@@ -1,7 +1,7 @@
 import os
 import logging
 from flask import Flask, render_template, request, jsonify
-from flask_cors import CORS  # Import CORS to fix CORS issues
+from flask_cors import CORS
 from google.cloud import storage
 import pyodbc
 from google.oauth2 import service_account
@@ -17,7 +17,7 @@ app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 # Enable CORS for specific origin
 CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
 
-# GCS authentication using service account file
+# GCS Authentication
 SERVICE_ACCOUNT_FILE = os.path.join(os.path.dirname(__file__), 'class-activity-435807-1abd91357b8d.json')
 credentials = service_account.Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE)
 BUCKET_NAME = "my-flask"  # Ensure this is the correct GCS bucket name
@@ -27,11 +27,13 @@ def get_db_connection():
     try:
         conn = pyodbc.connect(
             'DRIVER={ODBC Driver 17 for SQL Server};'
-            'SERVER=35.229.112.4;'  # Ensure this is the correct server IP
-            'DATABASE=myappdb;'  # Replace with your actual database name
-            'UID=sqlserver;'  # Username
-            'PWD=root;'  # Password
-            'Encrypt=no;'  # Adjust if encryption is needed
+            'SERVER=35.231.64.34;'
+            'DATABASE=myappdb;'
+            'UID=sqlserver;'
+            'PWD=root;'
+            'Encrypt=no;'
+            'Connection Timeout=30;'  # 30 seconds timeout
+
         )
         logging.info("Database connection established.")
         return conn
@@ -44,7 +46,7 @@ def get_db_connection():
 def index():
     return render_template('index.html')
 
-# Route to handle the submission of two values
+# Route to handle submission and insert data into the database
 @app.route('/submit', methods=['POST'])
 def submit_values():
     data = request.get_json()
@@ -53,14 +55,12 @@ def submit_values():
 
     logging.info(f"Received Value 1: {value1}, Value 2: {value2}")
 
-    # Validate input values
     if not value1 or not value2:
         return jsonify(error="Both values are required"), 400
 
-    # Combine values into one message to be inserted into the 'message' column
     combined_message = f"Value 1: {value1}, Value 2: {value2}"
 
-    # Insert values into the database
+    # Insert the message into the database
     conn = get_db_connection()
     if conn:
         cur = conn.cursor()
@@ -85,7 +85,6 @@ def get_gcs_client():
 
 # Function to upload a file to Google Cloud Storage
 def upload_to_gcs(file, bucket_name, blob_name):
-    """Uploads the file to Google Cloud Storage."""
     try:
         client = get_gcs_client()
         bucket = client.bucket(bucket_name)

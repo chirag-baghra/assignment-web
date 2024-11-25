@@ -30,4 +30,4 @@ options:
   # Specify logging behavior (optional)
   logging: CLOUD_LOGGING_ONLY  # Use Cloud Logging only
   # The default_logs_bucket_behavior is optional and can be set depending on your requirements.
-  default_logs_bucket_behavior: 'REGIONAL_USER_OWNED_BUCKET'  # Set user-managed logs bucket behavior
+  default_logs_bucket_behavior: 'REGIONAL_USER_OWNED_BUCKET'  # Set user-managed logs bucket 

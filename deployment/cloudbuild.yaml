@@ -27,6 +27,8 @@ substitutions:
   _CLUSTER_NAME: 'my-flask-cluster'  # Set your GKE cluster name
 
 options:
+  # Specify the log bucket and behavior
   default_logs_bucket_behavior: 'REGIONAL_USER_OWNED_BUCKET'
-
-  
+  logging:
+    destination: 'cloud_logging'
+  logs_bucket: 'gs://ic4'  # Specify your log bucket

@@ -23,11 +23,9 @@ images:
   - 'gcr.io/$PROJECT_ID/myapp:$SHORT_SHA'
 
 substitutions:
-  _ZONE: 'us-central1-a'  # Set your desired compute zone
-  _CLUSTER_NAME: 'my-flask-cluster'  # Set your GKE cluster name
+  _ZONE: 'us-central1-a'
+  _CLUSTER_NAME: 'my-flask-cluster'
 
 options:
-  # Specify logging behavior (optional)
-  logging: CLOUD_LOGGING_ONLY  # Use Cloud Logging only
-  # The default_logs_bucket_behavior is optional and can be set depending on your requirements.
-  default_logs_bucket_behavior: 'REGIONAL_USER_OWNED_BUCKET'  # Set user-managed logs bucket 
+  default_logs_bucket_behavior: 'REGIONAL_USER_OWNED_BUCKET'
+  logging: CLOUD_LOGGING_ONLY

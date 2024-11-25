@@ -25,3 +25,6 @@ images:
 substitutions:
   _ZONE: 'us-central1-a'  # Set your desired compute zone
   _CLUSTER_NAME: 'my-flask-cluster'  # Set your GKE cluster name
+
+options:
+  default_logs_bucket_behavior: 'REGIONAL_USER_OWNED_BUCKET'
